@@ -53,21 +53,6 @@
    - Frontend: http://localhost:5173
    - API: http://localhost:3001
 
-## 📚 Documentation
-
-Full documentation is available in the `/docs` folder:
-
-- `1 - README.md` - Project overview
-- `2 - ARCHITECTURE.md` - System architecture
-- `3 - DB_SCHEMA.md` - Database schema
-- `4 - API.md` - API reference
-- `5 - REALTIME.md` - Socket.IO setup
-- `6 - SECURITY.md` - Security guidelines
-- `7 - FRONTEND_GUIDE.md` - Frontend structure
-- `8 - CHALLENGES_CATALOG.md` - Challenge catalog
-- `9 - DEPLOYMENT.md` - Deployment guide
-- `10 - ROADMAP.md` - Development roadmap
-
 ## 🧩 Tech Stack
 
 - **Frontend**: React + Vite + Tailwind CSS + Framer Motion
