@@ -1,0 +1,20 @@
+{
+  "name": "getoutthere",
+  "version": "1.0.0",
+  "description": "Social Comfort Challenge App",
+  "private": true,
+  "scripts": {
+    "dev:api": "cd server && pnpm dev",
+    "dev:web": "cd web && pnpm dev",
+    "build:server": "cd server && pnpm build",
+    "build:web": "cd web && pnpm build",
+    "install:all": "cd server && pnpm install && cd ../web && pnpm install",
+    "db:sync": "cd server && pnpm db:sync",
+    "db:seed": "cd server && pnpm db:seed"
+  },
+  "workspaces": [
+    "server",
+    "web"
+  ]
+}
+
