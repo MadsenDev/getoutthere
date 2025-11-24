@@ -5,10 +5,12 @@ import { TodayChallenge } from '../lib/api';
 interface ChallengeCardProps {
   challenge: TodayChallenge;
   onComplete: (note?: string) => void;
+  onSkip?: () => void;
   isCompleting: boolean;
+  isSkipping?: boolean;
 }
 
-export default function ChallengeCard({ challenge, onComplete, isCompleting }: ChallengeCardProps) {
+export default function ChallengeCard({ challenge, onComplete, onSkip, isCompleting, isSkipping }: ChallengeCardProps) {
   const isCompleted = challenge.completed_at !== null;
 
   const difficultyColors = [
@@ -59,7 +61,18 @@ export default function ChallengeCard({ challenge, onComplete, isCompleting }: C
             )}
           </div>
         ) : (
-          <CompleteButton onComplete={onComplete} isCompleting={isCompleting} />
+          <div className="space-y-3">
+            <CompleteButton onComplete={onComplete} isCompleting={isCompleting} />
+            {onSkip && (
+              <button
+                onClick={onSkip}
+                disabled={isSkipping || isCompleting}
+                className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 py-2 px-4 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSkipping ? 'Skipping...' : 'Skip Today (Rest Day)'}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </motion.div>

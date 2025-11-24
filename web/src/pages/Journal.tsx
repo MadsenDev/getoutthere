@@ -297,12 +297,24 @@ export default function Journal() {
         </AnimatePresence>
 
         {allEntries.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 sm:p-12 border border-gray-100 dark:border-gray-700 text-center transition-colors">
-            <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm sm:text-base">No journal entries yet.</p>
-            <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">
-              Complete a challenge or create a new entry to start your journal.
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 sm:p-12 border border-gray-100 dark:border-gray-700 text-center transition-colors"
+          >
+            <div className="mb-4 flex justify-center">
+              <svg className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-serif text-gray-900 dark:text-gray-100 mb-2">Your journal is waiting</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm sm:text-base">
+              Start documenting your journey by completing a challenge or creating a new entry.
             </p>
-          </div>
+            <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">
+              Every step forward is worth remembering.
+            </p>
+          </motion.div>
         ) : (
           <div className="space-y-4 sm:space-y-6">
             {allEntries.map((day, idx) => {

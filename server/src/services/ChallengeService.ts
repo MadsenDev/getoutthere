@@ -33,28 +33,59 @@ export class ChallengeService {
           current_streak: 0,
           longest_streak: 0,
           comfort_score: 0,
+          badges: [],
         });
 
-      const [minDiff, maxDiff] = this.getDifficultyRange(stats.comfort_score);
+      // Check for missed days - if user missed 3+ days, reduce difficulty
+      const today = new Date(date);
+      today.setHours(0, 0, 0, 0);
+      const threeDaysAgo = new Date(today);
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       
-      // For brand new users (comfort_score = 0), prioritize level 1 challenges
-      const preferredDifficulty = stats.comfort_score === 0 ? 1 : null;
-
-      // Get yesterday's category to avoid repetition
-      const yesterday = new Date(date);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      const yesterdayChallenge = await UserChallenge.findOne({
+      const recentCompletions = await UserChallenge.count({
         where: {
           user_id: userId,
-          assigned_date: yesterdayStr,
+          completed_at: { [Op.ne]: null },
+          assigned_date: { [Op.gte]: threeDaysAgo.toISOString().split('T')[0] },
         },
-        include: [{ model: Challenge, as: 'challenge' }],
       });
 
-      const excludeCategory = (yesterdayChallenge as any)?.challenge?.category;
+      // Adjust comfort score for catch-up: reduce difficulty if missed days
+      let adjustedComfortScore = stats.comfort_score;
+      if (recentCompletions === 0) {
+        // No completions in last 3 days - reduce difficulty by 20 points
+        adjustedComfortScore = Math.max(0, stats.comfort_score - 20);
+      } else if (recentCompletions === 1) {
+        // Only 1 completion in last 3 days - reduce difficulty by 10 points
+        adjustedComfortScore = Math.max(0, stats.comfort_score - 10);
+      }
 
-      // Find eligible challenges - prefer level 1 for new users
+      const [minDiff, maxDiff] = this.getDifficultyRange(adjustedComfortScore);
+      
+      // For brand new users (comfort_score = 0), prioritize level 1 challenges
+      const preferredDifficulty = adjustedComfortScore === 0 ? 1 : null;
+
+      // Get recent categories to avoid repetition (last 3 days, not just yesterday)
+      const recentCategories = new Set<string>();
+      for (let i = 1; i <= 3; i++) {
+        const pastDate = new Date(date);
+        pastDate.setDate(pastDate.getDate() - i);
+        const pastDateStr = pastDate.toISOString().split('T')[0];
+        const pastChallenge = await UserChallenge.findOne({
+          where: {
+            user_id: userId,
+            assigned_date: pastDateStr,
+          },
+          include: [{ model: Challenge, as: 'challenge' }],
+        });
+        if ((pastChallenge as any)?.challenge?.category) {
+          recentCategories.add((pastChallenge as any).challenge.category);
+        }
+      }
+
+      const excludeCategories = Array.from(recentCategories);
+
+      // Find eligible challenges - prefer level 1 for new users, avoid recent categories
       let eligibleChallenges: Challenge[] = [];
       
       if (preferredDifficulty) {
@@ -63,8 +94,8 @@ export class ChallengeService {
           is_active: true,
           difficulty: preferredDifficulty,
         };
-        if (excludeCategory) {
-          preferredWhere.category = { [Op.ne]: excludeCategory };
+        if (excludeCategories.length > 0) {
+          preferredWhere.category = { [Op.notIn]: excludeCategories };
         }
         eligibleChallenges = await Challenge.findAll({
           where: preferredWhere,
@@ -77,8 +108,8 @@ export class ChallengeService {
           is_active: true,
           difficulty: { [Op.between]: [minDiff, maxDiff] },
         };
-        if (excludeCategory) {
-          whereClause.category = { [Op.ne]: excludeCategory };
+        if (excludeCategories.length > 0) {
+          whereClause.category = { [Op.notIn]: excludeCategories };
         }
         eligibleChallenges = await Challenge.findAll({
           where: whereClause,
@@ -86,7 +117,7 @@ export class ChallengeService {
       }
 
       if (eligibleChallenges.length === 0) {
-        // Fallback: try without category restriction
+        // Fallback: try without category restriction but still respect difficulty
         const fallbackWhere: any = {
           is_active: true,
           difficulty: { [Op.between]: [minDiff, maxDiff] },
@@ -107,6 +138,13 @@ export class ChallengeService {
         if (eligibleChallenges.length === 0) {
           eligibleChallenges = await Challenge.findAll({
             where: fallbackWhere,
+          });
+        }
+        
+        // Final fallback: any active challenge
+        if (eligibleChallenges.length === 0) {
+          eligibleChallenges = await Challenge.findAll({
+            where: { is_active: true },
           });
         }
         

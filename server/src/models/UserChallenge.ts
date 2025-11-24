@@ -7,6 +7,7 @@ export class UserChallenge extends Model {
   declare challenge_id: string;
   declare assigned_date: Date;
   declare completed_at: Date | null;
+  declare skipped_at: Date | null;
   declare note: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
@@ -40,6 +41,10 @@ UserChallenge.init(
       allowNull: false,
     },
     completed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    skipped_at: {
       type: DataTypes.DATE,
       allowNull: true,
     },

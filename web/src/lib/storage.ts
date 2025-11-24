@@ -136,3 +136,29 @@ export async function importAnonId(id: string): Promise<void> {
   await setAnonId(id);
 }
 
+/**
+ * Clear anonymous ID from all storage tiers
+ * Used when logging out to allow a new anonymous ID to be generated
+ */
+export async function clearAnonId(): Promise<void> {
+  // Clear from all tiers
+  localStorage.removeItem(STORAGE_KEY);
+  sessionStorage.removeItem(STORAGE_KEY);
+  
+  // Clear from IndexedDB
+  try {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(STORAGE_KEY);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  } catch (error) {
+    // IndexedDB not available (e.g., private browsing) - that's okay
+    console.warn('IndexedDB not available for clearing:', error);
+  }
+}
+

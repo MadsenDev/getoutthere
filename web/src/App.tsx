@@ -20,35 +20,42 @@ function AppContent() {
     const restoring = sessionStorage.getItem('isRestoring');
     if (restoring === 'true') {
       sessionStorage.removeItem('isRestoring');
-      setIsRestoring(true);
-      // Give a bit more time for restore operations
-      const timer = setTimeout(() => {
-        setIsRestoring(false);
-      }, 800);
-      return () => clearTimeout(timer);
+      // Only show loading screen on home route during restore
+      // For other routes, just ensure they're available immediately
+      if (location.pathname === '/') {
+        setIsRestoring(true);
+        // Give a bit more time for restore operations on home route
+        const timer = setTimeout(() => {
+          setIsRestoring(false);
+        }, 800);
+        return () => clearTimeout(timer);
+      } else {
+        // On non-home routes, mark load complete immediately and skip loading screen
+        setInitialLoadComplete();
+      }
     }
-  }, []);
+  }, [location.pathname, setInitialLoadComplete]);
 
-  // If user is not on the home route, mark initial load as complete after a short delay
+  // If user is not on the home route, mark initial load as complete immediately
   // This prevents the loading screen from sticking if they navigate directly to another route
+  // Also ensures routes are available immediately after reload on non-home routes
   useEffect(() => {
     if (location.pathname !== '/' && isInitialLoad) {
-      const timer = setTimeout(() => {
-        setInitialLoadComplete();
-      }, 300);
-      return () => clearTimeout(timer);
+      setInitialLoadComplete();
     }
   }, [location.pathname, isInitialLoad, setInitialLoadComplete]);
 
   // Show loading screen if:
   // 1. We're on the home route (Today) and initial load isn't complete, OR
-  // 2. We're restoring from a reload
-  const isLoading = (location.pathname === '/' && isInitialLoad) || isRestoring;
+  // 2. We're restoring from a reload AND on the home route
+  const isLoading = (location.pathname === '/' && isInitialLoad) || (isRestoring && location.pathname === '/');
 
   return (
     <>
       {isLoading && <LoadingScreen />}
-      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isLoading ? 'opacity-0' : 'opacity-100 transition-opacity duration-300'}`}>
+      {/* Always render routes to ensure React Router can match them, even during loading */}
+      {/* Use visibility instead of opacity to ensure routes are matched by React Router */}
+      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isLoading ? 'invisible' : 'visible transition-opacity duration-300'}`}>
         <Navbar />
         <Routes>
           <Route path="/" element={<Today />} />

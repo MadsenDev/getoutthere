@@ -1,3 +1,5 @@
+import { clearAnonId } from './storage';
+
 const base = import.meta.env.VITE_API_URL || 'http://localhost:3055';
 
 function getHeaders() {
@@ -62,11 +64,25 @@ export async function completeChallenge(note?: string): Promise<CompleteResponse
   return await res.json();
 }
 
+export async function skipChallenge(): Promise<{ ok: boolean; current_streak: number; message: string }> {
+  const res = await fetch(`${base}/api/complete/skip`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to skip challenge');
+  }
+  return await res.json();
+}
+
 export interface ProgressData {
   stats: {
     current_streak: number;
     longest_streak: number;
     comfort_score: number;
+    badges?: string[];
+    new_badges?: string[];
   };
   history: Array<{
     date: string;
@@ -190,6 +206,9 @@ export async function login(email: string, password: string): Promise<AuthRespon
 
 export async function logout(): Promise<void> {
   localStorage.removeItem('authToken');
+  // Clear anonId from all storage tiers so a new one can be generated on next load
+  // This allows the user to continue as a new anonymous user after logout
+  await clearAnonId();
 }
 
 export async function getCurrentUser(): Promise<UserInfo> {

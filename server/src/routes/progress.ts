@@ -1,41 +1,44 @@
 import { Router, Response } from 'express';
 import { UserStats, UserChallenge, Challenge, JournalEntry } from '../models/index.js';
 import { authenticateAnon, AuthRequest } from '../middleware/auth.js';
+import { StatsService } from '../services/StatsService.js';
 import { Op } from 'sequelize';
 
 const router: Router = Router();
 
 router.get('/', authenticateAnon, async (req: AuthRequest, res: Response) => {
   try {
-    const stats = await UserStats.findByPk(req.userId!);
+    // Recalculate streak to ensure it's current (handles cases where user hasn't completed in days)
+    const stats = await StatsService.updateStreak(req.userId!);
+    // Check and award badges
+    const badgeResult = await StatsService.checkAndAwardBadges(req.userId!);
     const statsData = stats || {
       current_streak: 0,
       longest_streak: 0,
       comfort_score: 0,
+      badges: [],
     };
 
-    // Get last 30 days of history
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Get last 365 days of history for heatmap and insights
+    const oneYearAgo = new Date();
+    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
 
     const challenges = await UserChallenge.findAll({
       where: {
         user_id: req.userId!,
-        assigned_date: { [Op.gte]: thirtyDaysAgo.toISOString().split('T')[0] },
+        assigned_date: { [Op.gte]: oneYearAgo.toISOString().split('T')[0] },
       },
       include: [{ model: Challenge, as: 'challenge' }],
       order: [['assigned_date', 'DESC']],
-      limit: 30,
     });
 
     // Get journal entries for the same period
     const journalEntries = await JournalEntry.findAll({
       where: {
         user_id: req.userId!,
-        entry_date: { [Op.gte]: thirtyDaysAgo.toISOString().split('T')[0] },
+        entry_date: { [Op.gte]: oneYearAgo.toISOString().split('T')[0] },
       },
       order: [['entry_date', 'DESC']],
-      limit: 30,
     });
 
     const history = challenges.map((uc: any) => ({
@@ -77,6 +80,8 @@ router.get('/', authenticateAnon, async (req: AuthRequest, res: Response) => {
         current_streak: statsData.current_streak,
         longest_streak: statsData.longest_streak,
         comfort_score: statsData.comfort_score,
+        badges: badgeResult.allBadges,
+        new_badges: badgeResult.newBadges,
       },
       history: allHistory,
     });

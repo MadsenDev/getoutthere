@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChallengeCard from '../components/ChallengeCard';
 import WelcomeCard from '../components/WelcomeCard';
-import { getToday, completeChallenge, TodayChallenge } from '../lib/api';
+import { getToday, completeChallenge, skipChallenge, TodayChallenge } from '../lib/api';
 import { socket } from '../lib/socket';
 import { useLoading } from '../contexts/LoadingContext';
 
@@ -10,6 +10,7 @@ export default function Today() {
   const [challenge, setChallenge] = useState<TodayChallenge | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const { setInitialLoadComplete } = useLoading();
@@ -84,6 +85,22 @@ export default function Today() {
     }
   };
 
+  const handleSkip = async () => {
+    if (!confirm('Skip today\'s challenge? Your streak will continue, but this day won\'t count towards it.')) {
+      return;
+    }
+    try {
+      setIsSkipping(true);
+      await skipChallenge();
+      // Reload challenge to reflect skipped state
+      await loadChallenge();
+    } catch (err: any) {
+      setError(err.message || 'Failed to skip challenge');
+    } finally {
+      setIsSkipping(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto mt-8 p-6">
@@ -116,7 +133,25 @@ export default function Today() {
   }
 
   if (!challenge) {
-    return null;
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-12"
+        >
+          <div className="mb-4 flex justify-center">
+            <svg className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-serif text-gray-900 dark:text-gray-100 mb-2">Challenge loading...</h3>
+          <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base">
+            We're preparing today's challenge for you.
+          </p>
+        </motion.div>
+      </div>
+    );
   }
 
   return (
@@ -135,7 +170,9 @@ export default function Today() {
         <ChallengeCard
           challenge={challenge}
           onComplete={handleComplete}
+          onSkip={handleSkip}
           isCompleting={isCompleting}
+          isSkipping={isSkipping}
         />
       </motion.div>
 

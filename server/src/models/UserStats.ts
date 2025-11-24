@@ -6,6 +6,7 @@ export class UserStats extends Model {
   declare current_streak: number;
   declare longest_streak: number;
   declare comfort_score: number;
+  declare badges: string[];
   declare updatedAt: Date;
 }
 
@@ -34,6 +35,11 @@ UserStats.init(
         min: 0,
         max: 100,
       },
+    },
+    badges: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+      allowNull: false,
     },
   },
   {

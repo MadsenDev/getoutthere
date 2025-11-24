@@ -1,0 +1,37 @@
+{
+  "name": "Get Out There",
+  "short_name": "Get Out There",
+  "description": "A calm, introvert-friendly app that helps people build social confidence through tiny daily challenges",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00d455",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Today's Challenge",
+      "short_name": "Today",
+      "description": "View today's challenge",
+      "url": "/",
+      "icons": [{ "src": "/images/logo.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Progress",
+      "short_name": "Progress",
+      "description": "View your progress",
+      "url": "/progress",
+      "icons": [{ "src": "/images/logo.svg", "sizes": "any" }]
+    }
+  ]
+}
+
