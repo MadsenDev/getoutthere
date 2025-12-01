@@ -31,6 +31,7 @@ export interface TodayChallenge {
     text: string;
   };
   completed_at: string | null;
+  skipped_at: string | null;
   note: string | null;
 }
 

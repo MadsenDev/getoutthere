@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChallengeCard from '../components/ChallengeCard';
 import WelcomeCard from '../components/WelcomeCard';
 import { getToday, completeChallenge, skipChallenge, TodayChallenge } from '../lib/api';
 import { socket } from '../lib/socket';
 import { useLoading } from '../contexts/LoadingContext';
+import { getDailyEncouragement } from '../utils/encouragement';
 
 export default function Today() {
   const [challenge, setChallenge] = useState<TodayChallenge | null>(null);
@@ -13,7 +14,12 @@ export default function Today() {
   const [isSkipping, setIsSkipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showSkipModal, setShowSkipModal] = useState(false);
+  const [showSkipSuccess, setShowSkipSuccess] = useState(false);
   const { setInitialLoadComplete } = useLoading();
+  
+  // Get today's encouragement message (memoized so it doesn't change during the day)
+  const encouragement = useMemo(() => getDailyEncouragement(), []);
 
   useEffect(() => {
     loadChallenge();
@@ -86,15 +92,32 @@ export default function Today() {
   };
 
   const handleSkip = async () => {
-    if (!confirm('Skip today\'s challenge? Your streak will continue, but this day won\'t count towards it.')) {
-      return;
-    }
+    setShowSkipModal(true);
+  };
+
+  const confirmSkip = async () => {
     try {
       setIsSkipping(true);
+      setShowSkipModal(false);
       await skipChallenge();
-      // Reload challenge to reflect skipped state
+      
+      // Reload challenge to get the latest state from server
       await loadChallenge();
+      
+      // Show success indication
+      setShowSkipSuccess(true);
+      
+      // Auto-dismiss after 3 seconds
+      setTimeout(() => {
+        setShowSkipSuccess(false);
+      }, 3000);
     } catch (err: any) {
+      // If challenge is already skipped, reload to show the skipped state
+      if (err.message && err.message.includes('already skipped')) {
+        await loadChallenge();
+        setShowSkipModal(false);
+        return;
+      }
       setError(err.message || 'Failed to skip challenge');
     } finally {
       setIsSkipping(false);
@@ -162,7 +185,7 @@ export default function Today() {
         transition={{ duration: 0.3 }}
       >
         <h1 className="text-3xl font-serif text-gray-900 dark:text-gray-100 mb-2">Today's Challenge</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">Small step. Nicely done.</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-8">{encouragement}</p>
         
         {/* Welcome Card for first-time users */}
         <WelcomeCard />
@@ -249,6 +272,86 @@ export default function Today() {
             <div className="absolute bottom-8 right-6 w-2 h-2 bg-purple-400 rounded-full opacity-75"></div>
           </motion.div>
         </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Skip Confirmation Modal */}
+      <AnimatePresence>
+        {showSkipModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 backdrop-blur-sm"
+            onClick={() => !isSkipping && setShowSkipModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md mx-4 relative overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 via-yellow-400 to-orange-400"></div>
+              
+              <div className="mb-6 flex justify-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+
+              <h2 className="text-xl sm:text-2xl font-serif text-gray-900 dark:text-gray-100 mb-3 text-center">
+                Skip Today's Challenge?
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm sm:text-base text-center">
+                Your streak will continue, but this day won't count towards it. You can take a rest day anytime.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSkipModal(false)}
+                  disabled={isSkipping}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSkip}
+                  disabled={isSkipping}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-orange-500 dark:bg-orange-600 rounded-lg hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSkipping ? 'Skipping...' : 'Yes, Skip Today'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Skip Success Indication */}
+      <AnimatePresence>
+        {showSkipSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 px-4 py-3 max-w-md mx-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Day skipped</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Your streak continues!</p>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

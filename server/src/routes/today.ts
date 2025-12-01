@@ -26,7 +26,8 @@ router.get('/', authenticateAnon, async (req: AuthRequest, res: Response) => {
         difficulty: challenge.difficulty,
         text: challenge.text,
       },
-      completed_at: userChallenge.completed_at,
+      completed_at: userChallenge.completed_at ? new Date(userChallenge.completed_at).toISOString() : null,
+      skipped_at: userChallenge.skipped_at ? new Date(userChallenge.skipped_at).toISOString() : null,
       note: userChallenge.note,
     });
   } catch (error: any) {

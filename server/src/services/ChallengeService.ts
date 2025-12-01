@@ -1,6 +1,17 @@
 import { Challenge, UserChallenge, UserStats } from '../models/index.js';
 import { Op } from 'sequelize';
 
+/**
+ * Format a date as YYYY-MM-DD using local time (not UTC)
+ * This avoids timezone issues where midnight local time might be the previous day in UTC
+ */
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export class ChallengeService {
   static getDifficultyRange(comfortScore: number): [number, number] {
     // Difficulty bands based on comfort score
@@ -15,7 +26,7 @@ export class ChallengeService {
   }
 
   static async getTodayChallenge(userId: string, date: Date = new Date()): Promise<UserChallenge | null> {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
     
     let userChallenge = await UserChallenge.findOne({
       where: {
@@ -46,7 +57,7 @@ export class ChallengeService {
         where: {
           user_id: userId,
           completed_at: { [Op.ne]: null },
-          assigned_date: { [Op.gte]: threeDaysAgo.toISOString().split('T')[0] },
+          assigned_date: { [Op.gte]: formatLocalDate(threeDaysAgo) },
         },
       });
 
@@ -70,7 +81,7 @@ export class ChallengeService {
       for (let i = 1; i <= 3; i++) {
         const pastDate = new Date(date);
         pastDate.setDate(pastDate.getDate() - i);
-        const pastDateStr = pastDate.toISOString().split('T')[0];
+        const pastDateStr = formatLocalDate(pastDate);
         const pastChallenge = await UserChallenge.findOne({
           where: {
             user_id: userId,
@@ -171,7 +182,7 @@ export class ChallengeService {
 
   static async completeChallenge(userId: string, note?: string): Promise<UserChallenge> {
     const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(today);
 
     const userChallenge = await UserChallenge.findOne({
       where: {

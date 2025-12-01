@@ -43,9 +43,11 @@ router.post('/', authenticateAnon, async (req: AuthRequest, res: Response) => {
 
 router.post('/skip', authenticateAnon, async (req: AuthRequest, res: Response) => {
   try {
+    // Use local date, not UTC, to avoid timezone issues
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    console.log('Skip request:', { userId: req.userId, todayStr });
 
     // Find today's challenge
     const userChallenge = await UserChallenge.findOne({
@@ -55,21 +57,41 @@ router.post('/skip', authenticateAnon, async (req: AuthRequest, res: Response) =
       },
     });
 
+    console.log('Found challenge:', { 
+      exists: !!userChallenge, 
+      id: userChallenge?.id,
+      completed_at: userChallenge?.completed_at,
+      skipped_at: userChallenge?.skipped_at,
+      assigned_date: userChallenge?.assigned_date
+    });
+
     if (!userChallenge) {
+      console.log('No challenge found for today');
       return res.status(400).json({ error: 'No challenge assigned for today.' });
     }
 
     if (userChallenge.completed_at) {
+      console.log('Challenge already completed');
       return res.status(400).json({ error: 'Challenge already completed.' });
     }
 
     if (userChallenge.skipped_at) {
+      console.log('Challenge already skipped');
       return res.status(400).json({ error: 'Challenge already skipped.' });
     }
 
     // Mark as skipped
-    userChallenge.skipped_at = new Date();
+    const skipTime = new Date();
+    userChallenge.skipped_at = skipTime;
     await userChallenge.save();
+    
+    // Verify the save worked
+    const saved = await UserChallenge.findByPk(userChallenge.id);
+    if (!saved || !saved.skipped_at) {
+      console.error('Failed to save skipped_at:', { id: userChallenge.id, skipped_at: saved?.skipped_at });
+      throw new Error('Failed to save skip status');
+    }
+    console.log('Challenge skipped successfully:', { id: userChallenge.id, skipped_at: saved.skipped_at });
 
     // Update streak (skipped days don't break streak)
     const stats = await StatsService.updateStreak(req.userId!);
